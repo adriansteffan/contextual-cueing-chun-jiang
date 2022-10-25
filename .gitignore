@@ -1,5 +1,6 @@
 data/
 local-server/webroot/
 prod_contextual-cueing-chun-jiang/webroot/
+prod_contextual-cueing-chun-jiang/data/
 
 .DS_Store
