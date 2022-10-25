@@ -1,0 +1,8 @@
+version: "3"
+services:
+    posner-covert-attention:
+        build: .
+        ports: 
+            - "127.0.0.1:12650:80"
+        volumes:
+            - "./data:/var/www/data"

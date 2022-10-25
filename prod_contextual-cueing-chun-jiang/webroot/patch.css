@@ -1,0 +1,11 @@
+.jspsych-content {
+    max-width: unset;
+}
+
+.jspsych-display-element{
+    overflow-y: hidden;
+}
+
+body {
+  background-color: #E8E8E8;
+}

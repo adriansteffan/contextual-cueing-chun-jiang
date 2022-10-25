@@ -1,0 +1,9 @@
+version: "3"
+services:
+    webserver:
+        build: ./local-server
+        ports: 
+            - "127.0.0.1:7000:80"
+        volumes:
+            - "./local-server/webroot:/var/www/html"
+            - "./data:/var/www/data"

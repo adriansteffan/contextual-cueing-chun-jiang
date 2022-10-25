@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Contextual Cueing</title>
+
+        <script src="jspsych/jspsych.js"></script>
+        <script src="jspsych/plugin-preload.js"></script>
+
+        <script src="jspsych/plugin-html-keyboard-response.js"></script>
+        <script src="jspsych/plugin-survey-html-form.js"></script>
+        <script src="jspsych/plugin-canvas-keyboard-response.js"></script>
+        <script src="jspsych/plugin-fullscreen.js"></script>
+
+        <script src="lib/underscore-umd-min.js"></script>
+
+        <link href="jspsych/jspsych.css" rel="stylesheet" type="text/css">
+        <link href="patch.css" rel="stylesheet" type="text/css">
+    </head>
+    <body></body>
+    <script>        
+
+        const audioCorrect = new Audio('audio/correct.mp3');
+        const audioMistake = new Audio('audio/mistake.mp3');
+
+        const jsPsych = initJsPsych();
+
+        var scaleCanvasToRetina = function(c){
+            var canvasWidth = window.innerWidth;
+            var canvasHeight = window.innerHeight;
+
+            c.width = canvasWidth * window.devicePixelRatio;
+            c.height = canvasHeight * window.devicePixelRatio;
+            c.style.width = canvasWidth + "px";
+            c.style.height = canvasHeight + "px";
+
+            c.getContext('2d').scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            c.getContext('2d').lineWidth = 4;
+        }
+                
+
+        const OLD = "OLD";
+        const NEW = "NEW";
+        const FAM = "FAM";
+
+        const locations = Array.from({length: 48}, (_, i) => i + 1);
+
+        // Choose 24 of the 48 locations to be used for target locations
+        const targetLocationsAll = _.sample(locations, 24);
+        
+        const targetLocationsNew = _.sample(targetLocationsAll, 12);
+        const targetLocationsOld = _.difference(targetLocationsAll, targetLocationsNew);
+
+        const colorArray12 = ["red", "red", "red", "green", "green", "green", "blue", "blue", "blue", "#F6BE00", "#F6BE00", "#F6BE00"];
+        const targetColorsNew = _.shuffle(colorArray12);
+        const targetColorsOld = _.shuffle(colorArray12);
+
+        class Configuration {
+            constructor(targetIndex, type, targetLocations, targetColors, excludedConfigurations) {
+                this.type = type;
+                this.distractorOrientations = Array.from({length: 11}, () => Math.floor(Math.random() * 4));
+
+                if(type == FAM){
+
+                    this.targetFamPos = Math.floor(Math.random() * 49);
+                    
+                    let validPositionsFound = false;
+                    while(!validPositionsFound){
+                        this.distractorPositions = _.sample(_.without(locations, this.targetFamPos), 11);
+
+                        validPositionsFound = true;
+                        for (const other of excludedConfigurations){
+                            if(this.equals(other)){
+                                validPositionsFound = false;
+                            }
+                        }
+                    }
+
+                    this.distractorColors = _.shuffle(colorArray12);
+                    this.targetFamColor = this.distractorColors[11];
+
+                } else {
+                    this.distractorPositions = _.sample(_.without(locations, targetLocations[this.targetIndex]), 11);
+                    this.targetIndex = targetIndex;
+
+                    const colorCopy = [...colorArray12];
+                    colorCopy.splice(colorCopy.findIndex(c => c == targetColors[this.targetIndex]), 1);
+                    this.distractorColors = _.shuffle(colorCopy);
+                }
+                
+            }
+
+            equals(other){
+                if(_.intersection(this.distractorPositions, other.distractorPositions).length === 11){
+
+                    if(this.type == FAM){
+                        const thisPos = this.targetFamPos;
+                    }else{
+                        const thisPos = this.type == NEW ? targetLocationsNew[this.targetIndex] : targetLocationsOld[this.targetIndex];
+                    }
+
+                    if(other.type == FAM){
+                        const otherPos = other.targetFamPos;
+                    }else{
+                        const otherPos = other.type == NEW ? targetLocationsNew[other.targetIndex] : targetLocationsOld[other.targetIndex];
+                    }
+                    return thisPos == otherPos;
+                }
+
+                return false;
+            }
+        }
+
+        function posToCoords(pos){
+            const rowIndex = Math.ceil(pos/8) - 1;
+            const colIndex = pos - 8*rowIndex - 1;
+
+            const Y_MARGIN = 100;
+            const usedHeight =  window.innerHeight - 2*Y_MARGIN;
+            const experimentWidth = 4 * (usedHeight/3);
+            const xOffset = (window.innerWidth - experimentWidth)/2 //;
+
+            return {
+                x: (colIndex+0.5) * (experimentWidth/8)  + xOffset,
+                y: (rowIndex+0.5) * usedHeight/6 + Y_MARGIN
+            }
+            
+        }   
+
+        function drawConfiguration(c, trial){
+            
+            scaleCanvasToRetina(c);
+            let ctx = c.getContext('2d');
+            
+            ctx.font = "60px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // draw target
+            const conf = trial.conf;
+            
+            let position = null;
+            let color = null;
+            if (conf.type == FAM){
+                position = conf.targetFamPos;
+                color = conf.targetFamColor;
+            } else {
+                position = conf.type == NEW ? targetLocationsNew[conf.targetIndex] : targetLocationsOld[conf.targetIndex];
+                color = conf.type == NEW ? targetColorsNew[conf.targetIndex] : targetColorsOld[conf.targetIndex]; 
+            }
+            
+            const coords = posToCoords(position);
+            
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.translate(coords.x, coords.y);
+            ctx.rotate(-Math.PI/2 * (trial.leftCorrect ? -1 : 1));
+            ctx.fillText("T", 0, 0);
+            ctx.restore();
+
+
+            //draw distractors
+            for(let i = 0;i<11;i++){
+                ctx.save();
+                ctx.fillStyle = conf.distractorColors[i]
+                const coordsDist = posToCoords(conf.distractorPositions[i]);
+                ctx.translate(coordsDist.x, coordsDist.y);
+                ctx.rotate(Math.PI/2 * conf.distractorOrientations[i]);
+                ctx.fillText("L", 0, 0);
+                ctx.restore();
+            }
+        }
+
+        // track all confs used to avoid collisions with familiarization trials
+        let confsUsedInExperiment = [];
+
+        const oldConfs = [];
+        for(let i = 0; i<12; i++){
+            oldConfs.push(new Configuration(i, OLD, targetLocationsOld, targetColorsOld, []));
+        }
+        confsUsedInExperiment = confsUsedInExperiment.concat(oldConfs);
+        
+        const EPOCHS = 3;
+        const BLOCKS_PER_EPOCH = 4;
+
+        let epochIndex = 0;
+        let blockIndex = 0;
+        let trialIndex = 0;
+
+        let famActive = true;
+        
+        const epochs = []; // an epoch is a list of blocks
+
+        for(let i = 0; i<EPOCHS; i++){
+            const blocks = []; // a block is a list of trials
+            for(let k = 0; k<BLOCKS_PER_EPOCH; k++){
+
+                const newConfs = [];
+                for(let m = 0; m<12; m++){
+                    newConfs.push(new Configuration(m, NEW, targetLocationsNew, targetColorsNew, []));
+                }
+                confsUsedInExperiment = confsUsedInExperiment.concat(newConfs);
+                const configurations = ( _.shuffle(_.union(oldConfs, newConfs)));
+
+                // add correct answers 
+                const block = [];
+
+                for(const conf of configurations){
+                    block.push({conf: conf, leftCorrect: Math.random() < 0.5})
+                }
+
+                blocks.push(block);
+            }
+            epochs.push(blocks);
+        }
+
+        const correctKeypress = (leftCorrect) => leftCorrect ? 'z' : '7';
+
+
+        const hello_trial = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: 'Hello world!'
+        }
+
+        const block = {
+            timeline: [
+                { // fixation
+                    type: jsPsychHtmlKeyboardResponse,
+                    stimulus: '+',
+                    choices: "NO_KEYS",
+                    trial_duration: 500
+                },
+                { // configuration
+                    type: jsPsychCanvasKeyboardResponse,
+                    stimulus: (c) => drawConfiguration(c, famActive ? familiarizationTrials[trialIndex] : epochs[epochIndex][blockIndex][trialIndex]),
+                    choices: ['z', '7'],
+                    post_trial_gap: 1000,
+                    data: {
+                        type: () => famActive ? FAM : epochs[epochIndex][blockIndex][trialIndex].conf.type,
+                        correct_response: () => correctKeypress(famActive ? familiarizationTrials[trialIndex].leftCorrect : epochs[epochIndex][blockIndex][trialIndex].leftCorrect),
+                        familiarization: () => famActive,
+                    },
+                    on_finish: function(data){
+                        data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_response);
+                        if(data.correct){
+                            audioCorrect.play();
+                        } else {
+                            audioMistake.play();
+                        }
+                    }
+                }
+            ],
+            on_timeline_start: function() {},
+            loop_function: function(data){
+                trialIndex++;
+
+                if(famActive && trialIndex == 24){
+                    famActive = false;
+                }
+                return trialIndex < 24;
+            }
+        }
+
+        const epoch = {
+            timeline: [
+                {
+                    type: jsPsychHtmlKeyboardResponse,
+                    stimulus: `<p>Break!</p>`,
+                    trial_duration: 1000,
+                    choices: "NO_KEYS",
+                }, 
+                {
+                    type: jsPsychHtmlKeyboardResponse,
+                    stimulus: `<p>Press the SPACE key to continue.</p>`,
+                    choices: [" "],
+                }, 
+                block,
+            ],
+            on_timeline_start: function() {
+                trialIndex = 0;
+            },
+            loop_function: function(data){
+                blockIndex++;
+                return blockIndex < BLOCKS_PER_EPOCH;
+            }
+        }
+
+        const mainTrial = {
+            timeline: [epoch],
+            timeline_variables: epochs,
+            on_timeline_start: function() {
+                blockIndex = 0;
+            },
+            loop_function: function(data){
+                epochIndex++;
+                return epochIndex < EPOCHS;
+            }
+        }
+
+        const familiarizationTrials = [];
+        const famTargetLocations = Array.from({length: 24}, () => Math.floor(Math.random() * 48));
+
+        for(let i = 0; i<24; i++){
+            const famConf = new Configuration(0, FAM, [], [], confsUsedInExperiment);
+            familiarizationTrials.push({conf: famConf, leftCorrect: Math.random() < 0.5});
+            confsUsedInExperiment.push(famConf);
+        }
+
+        const enterName = {
+            type: jsPsychSurveyHtmlForm,
+            preamble: '<p>Enter a nickname:</p>',
+            html: '<p><input type="text" id="test-resp-box" name="name" size="10" /></p>',
+            autofocus: 'test-resp-box'
+        };
+
+        const welcome = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `<p>Welcome to this in-class experiment! <br>
+                In this experiment, you will be shown slides containing the letters L and (one) T. <br>
+                 Press <strong>Z</strong> if the T points to the left like this: ⊣.<br>
+                 Press <strong>7</strong> if the T points to the right like this: ⊢.<br>
+                 Good luck! (Press any key to continue)</p>
+            `
+        };
+
+        const enterFullscreen = {
+            type: jsPsychFullscreen,
+            fullscreen_mode: true
+        }
+
+        const exitFullscreen = {
+            type: jsPsychFullscreen,
+            fullscreen_mode: false,
+            delay_after: 0
+        }
+        
+        const end = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `<p>Thanks for participating! <br>
+                Please wait a couple of seconds for the data submission to finish before closing the window .</p>
+            `
+        };
+
+        jsPsych.run([
+            enterName,
+            enterFullscreen,
+            welcome,
+            block, // familiarization
+            mainTrial,
+            exitFullscreen,
+            end
+        ]);
+
+        /**
+         * 
+         * 
+         * Text to retina?
+         * data transmission
+         * r script for analysis
+         * 
+         * **/
+    
+    </script>
+</html>

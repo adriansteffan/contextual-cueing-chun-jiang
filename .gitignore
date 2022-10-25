@@ -1,0 +1,5 @@
+data/
+local-server/webroot/
+prod_mb2-webcam-eyetracking/webroot/
+
+.DS_Store
