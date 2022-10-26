@@ -15,6 +15,8 @@
 
         <link href="jspsych/jspsych.css" rel="stylesheet" type="text/css">
         <link href="patch.css" rel="stylesheet" type="text/css">
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     </head>
     <body></body>
     <script>        
@@ -22,7 +24,21 @@
         const audioCorrect = new Audio('audio/correct.mp3');
         const audioMistake = new Audio('audio/mistake.mp3');
 
-        const jsPsych = initJsPsych();
+        function saveData(name, data){
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'write_data.php');
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({
+                filedata: data,
+                filename: "ccResult",
+                filetype: "csv", 
+                username: name
+            }));
+        }        
+
+        const jsPsych = initJsPsych({
+            on_finish: function(){ saveData(jsPsych.data.get().trials[0].response.name, jsPsych.data.get().csv()); }
+        });
 
         var scaleCanvasToRetina = function(c){
             var canvasWidth = window.innerWidth;
@@ -80,8 +96,9 @@
                     this.targetFamColor = this.distractorColors[11];
 
                 } else {
-                    this.distractorPositions = _.sample(_.without(locations, targetLocations[this.targetIndex]), 11);
+        
                     this.targetIndex = targetIndex;
+                    this.distractorPositions = _.sample(_.without(locations, targetLocations[this.targetIndex]), 11);
 
                     const colorCopy = [...colorArray12];
                     colorCopy.splice(colorCopy.findIndex(c => c == targetColors[this.targetIndex]), 1);
@@ -180,14 +197,14 @@
         }
         confsUsedInExperiment = confsUsedInExperiment.concat(oldConfs);
         
-        const EPOCHS = 3;
-        const BLOCKS_PER_EPOCH = 4;
+        const EPOCHS = 2;
+        const BLOCKS_PER_EPOCH = 1;
 
         let epochIndex = 0;
         let blockIndex = 0;
         let trialIndex = 0;
 
-        let famActive = true;
+        let famActive = false;
         
         const epochs = []; // an epoch is a list of blocks
 
@@ -236,9 +253,13 @@
                     choices: ['z', '7'],
                     post_trial_gap: 1000,
                     data: {
-                        type: () => famActive ? FAM : epochs[epochIndex][blockIndex][trialIndex].conf.type,
+                        name: () => jsPsych.data.get().trials[0].response.name,
+                        conf_type: () => famActive ? FAM : epochs[epochIndex][blockIndex][trialIndex].conf.type,
                         correct_response: () => correctKeypress(famActive ? familiarizationTrials[trialIndex].leftCorrect : epochs[epochIndex][blockIndex][trialIndex].leftCorrect),
                         familiarization: () => famActive,
+                        epoch: () => epochIndex,
+                        block: () => blockIndex,
+                        trial: () => trialIndex,
                     },
                     on_finish: function(data){
                         data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_response);
@@ -250,7 +271,6 @@
                     }
                 }
             ],
-            on_timeline_start: function() {},
             loop_function: function(data){
                 trialIndex++;
 
@@ -277,24 +297,27 @@
                 block,
             ],
             on_timeline_start: function() {
+                console.log("block start")
                 trialIndex = 0;
             },
-            loop_function: function(data){
+            on_timeline_finish: function() {
+                console.log("block finish")
                 blockIndex++;
-                return blockIndex < BLOCKS_PER_EPOCH;
-            }
+            },
+            repetitions: BLOCKS_PER_EPOCH,
         }
 
         const mainTrial = {
             timeline: [epoch],
-            timeline_variables: epochs,
             on_timeline_start: function() {
+                console.log("epoch start")
                 blockIndex = 0;
             },
-            loop_function: function(data){
+            on_timeline_finish: function() {
+                console.log("epoch finish")
                 epochIndex++;
-                return epochIndex < EPOCHS;
-            }
+            },
+            repetitions: EPOCHS,
         }
 
         const familiarizationTrials = [];
@@ -325,7 +348,10 @@
 
         const enterFullscreen = {
             type: jsPsychFullscreen,
-            fullscreen_mode: true
+            fullscreen_mode: true,
+            data: {
+                test: "test",
+            },
         }
 
         const exitFullscreen = {
@@ -336,7 +362,7 @@
         
         const end = {
             type: jsPsychHtmlKeyboardResponse,
-            stimulus: `<p>Thanks for participating! <br>
+            stimulus: `<p>Thanks for participating! Press any key to submit your data. <br>
                 Please wait a couple of seconds for the data submission to finish before closing the window .</p>
             `
         };
@@ -345,7 +371,7 @@
             enterName,
             enterFullscreen,
             welcome,
-            block, // familiarization
+            block, // familiarization, change famActive to false if you comment this out
             mainTrial,
             exitFullscreen,
             end
@@ -353,11 +379,7 @@
 
         /**
          * 
-         * 
          * Text to retina?
-         * data transmission
-         * r script for analysis
-         * 
          * **/
     
     </script>
