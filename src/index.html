@@ -197,8 +197,8 @@
         }
         confsUsedInExperiment = confsUsedInExperiment.concat(oldConfs);
         
-        const EPOCHS = 2;
-        const BLOCKS_PER_EPOCH = 1;
+        const EPOCHS = 3;
+        const BLOCKS_PER_EPOCH = 3;
 
         let epochIndex = 0;
         let blockIndex = 0;
@@ -286,7 +286,7 @@
                 {
                     type: jsPsychHtmlKeyboardResponse,
                     stimulus: `<p>Break!</p>`,
-                    trial_duration: 1000,
+                    trial_duration: 5000,
                     choices: "NO_KEYS",
                 }, 
                 {
@@ -297,11 +297,9 @@
                 block,
             ],
             on_timeline_start: function() {
-                console.log("block start")
                 trialIndex = 0;
             },
             on_timeline_finish: function() {
-                console.log("block finish")
                 blockIndex++;
             },
             repetitions: BLOCKS_PER_EPOCH,
@@ -310,11 +308,9 @@
         const mainTrial = {
             timeline: [epoch],
             on_timeline_start: function() {
-                console.log("epoch start")
                 blockIndex = 0;
             },
             on_timeline_finish: function() {
-                console.log("epoch finish")
                 epochIndex++;
             },
             repetitions: EPOCHS,
