@@ -198,7 +198,7 @@
         confsUsedInExperiment = confsUsedInExperiment.concat(oldConfs);
         
         const EPOCHS = 3;
-        const BLOCKS_PER_EPOCH = 3;
+        const BLOCKS_PER_EPOCH = 2;
 
         let epochIndex = 0;
         let blockIndex = 0;
@@ -286,7 +286,7 @@
                 {
                     type: jsPsychHtmlKeyboardResponse,
                     stimulus: `<p>Break!</p>`,
-                    trial_duration: 5000,
+                    trial_duration: 2000,
                     choices: "NO_KEYS",
                 }, 
                 {
