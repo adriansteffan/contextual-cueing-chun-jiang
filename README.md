@@ -1,6 +1,6 @@
 # Contextual cueing: implicit learning and memory of visual context guides spatial attention (Chun & Jiang, 1998)
 A browser based implementation of the first experiment from [Contextual cueing: implicit learning and memory of visual context guides spatial attention](https://pubmed.ncbi.nlm.nih.gov/9679076/) using jsPsych.
-It is intended to be used as a demonstration when discussing the paper in a lecture. You can try out a hosted version at [cc.psych.study](https://cc.psych.study).
+It is intended to be used as a demonstration when discussing the paper in a lecture.
 
 This implementation deviates slightly from the original paradigm, as no jittering of the grid position was applied to either target or distractor stimuli.
 
@@ -41,7 +41,7 @@ Depending on your setup, you might want to change the ip mapping in [prod_contex
 
 ## Development
 
-When initially cloning the project and after making changes , update the files in the local webroot by running
+When initially cloning the project and after making changes, update the files in the local webroot by running
 
 ```
 ./build.sh
